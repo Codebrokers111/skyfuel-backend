@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+model User {
+  id                String       @id @default(uuid())
+  name              String?
+  email             String       @unique
+  passwordHash      String? // null when provider = GOOGLE
+  provider          AuthProvider @default(LOCAL)
+  providerId        String? // eg. GOOGLE
+  emailVerifiedAt   DateTime?
+  passwordChangedAt DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  sessions Session[]
+  otps     OTP[]
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  refreshHash String
+  userAgent   String
+  ip          String
+  revoked     Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model OTP {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  purpose   OTPPurpose
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  @@index([userId, purpose])
+}
+
+enum OTPPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+  LOGIN
+}

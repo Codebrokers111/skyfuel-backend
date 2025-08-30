@@ -1,13 +1,15 @@
 # Skyfuel Backend
 
-This is a Node.js Express backend project for Skyfuel, featuring payment integration with Razorpay and other essential functionalities.
+Skyfuel Backend is a modular Node.js Express API for user authentication, management, and payment integration (Razorpay). It uses PostgreSQL with Prisma ORM for data persistence and Zod for validation.
 
 ## Features
 
-- User authentication and management
-- Payment processing via Razorpay
+- User authentication (signup/signin, JWT-based)
+- Session management
+- OTP support for email verification, password reset, and login
+- Payment processing via Razorpay (planned)
 - RESTful API endpoints
-- Error handling and validation
+- Centralized error handling
 - Modular code structure
 
 ## Getting Started
@@ -16,6 +18,7 @@ This is a Node.js Express backend project for Skyfuel, featuring payment integra
 
 - Node.js (v16+)
 - npm
+- PostgreSQL
 
 ### Installation
 
@@ -27,18 +30,42 @@ npm install
 
 ### Environment Setup
 
-Create a `.env` file in the root directory and add:
+Copy `.env_example` to `.env` and fill in your values:
 
 ```
-PORT=3000
-RAZORPAY_KEY_ID=your_key_id
-RAZORPAY_KEY_SECRET=your_key_secret
-DATABASE_URL=your_database_url
+DATABASE_URL="postgresql://postgres:<YOUR_PASSWORD>%23@localhost:5432/<DB_NAME>?schema=public"
+JWT_SECRET="<YOUR_JWT_SECRET>"
+PORT=<YOUR_PORT>
+```
+
+### Prisma Database Migration
+
+To set up the database schema, run:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+This will apply migrations from [prisma/migrations/](prisma/migrations/) and generate the Prisma client.
+
+To generate Prisma types after schema changes:
+
+```bash
+npx prisma generate
 ```
 
 ### Running the Server
 
-```bashs
+For development (auto-reload):
+
+```bash
+npm run dev
+```
+
+For production:
+
+```bash
+npm run build
 npm start
 ```
 
@@ -46,18 +73,14 @@ npm start
 
 | Method | Endpoint         | Description                |
 |--------|-----------------|----------------------------|
-| POST   | /api/auth/login | User login                 |
-| POST   | /api/payments   | Initiate Razorpay payment  |
-| GET    | /api/users      | List all users             |
+| POST   | /v1/auth/signup | User registration          |
+| POST   | /v1/auth/signin | User login                 |
+| ...    | ...             | More endpoints coming soon |
 
-## Payment Integration
+## Project Structure
 
-Payments are handled using Razorpay. Refer to the `/api/payments` endpoint for initiating and verifying transactions.
-
-## Contributing
-
-Pull requests are welcome. For major changes, open an issue first to discuss what you would like to change.
-
-## License
-
-[MIT](LICENSE)
+- [`src/app.ts`](src/app.ts): Express app setup
+- [`src/server.ts`](src/server.ts): HTTP server entrypoint
+- [`src/db/prisma.ts`](src/db/prisma.ts): Prisma client instance
+- [`src/modules/auth/`](src/modules/auth/): Auth routes, service, validation
+- [`prisma/schema.prisma`](prisma/schema.prisma): Database schema

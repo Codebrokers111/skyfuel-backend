@@ -1,19 +1,7 @@
-import express from 'express';
+import http from "http";
+import { app } from "./app.js";
 
-import type { Application, Request, Response } from 'express';
-import dotenv from 'dotenv';
+const PORT = Number(process.env.PORT || 8080);
+const server = http.createServer(app);
 
-dotenv.config();
-
-const app: Application = express();
-const PORT = process.env.PORT || 8080;
-
-app.use(express.json());
-
-app.get('/', (_req: Request, res: Response) => {
-    res.send('Hello, TypeScript + Express!');
-});
-
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`API on http://localhost:${PORT}`));
