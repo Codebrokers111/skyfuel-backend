@@ -71,11 +71,13 @@ npm start
 
 ## API Endpoints
 
-| Method | Endpoint         | Description                |
-|--------|-----------------|----------------------------|
-| POST   | /v1/auth/signup | User registration          |
-| POST   | /v1/auth/signin | User login                 |
-| ...    | ...             | More endpoints coming soon |
+| Method | Endpoint               | Description                |
+| ------ | ---------------------- | -------------------------- |
+| POST   | /v1/auth/signup        | User registration          |
+| POST   | /v1/auth/signin        | User login                 |
+| GET    | /v1/auth/getuser       | Getting User Details       |
+| POST   | /v1/auth/verifycaptcha | Verifying Captcha          |
+| ...    | ...                    | More endpoints coming soon |
 
 ## Project Structure
 
