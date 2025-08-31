@@ -11,5 +11,10 @@ export const signinSchema = z.object({
     password: z.string().min(1),
 });
 
+export const captchaSchema = z.object({
+  token: z.string().min(1, "Captcha token is required"),
+});
+
+export type CaptchaInput = z.infer<typeof captchaSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
 export type SigninInput = z.infer<typeof signinSchema>;

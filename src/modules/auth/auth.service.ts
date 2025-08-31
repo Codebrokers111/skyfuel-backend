@@ -1,6 +1,8 @@
 import { prisma } from '../../db/prisma.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+const CAPTCHA_SEC_KEY = process.env.C_SECRET_KEY;
+const CAPTCHA_VERIFY = process.env.C_VERIFY;
 
 export type PublicUser = {
     id: string;
@@ -45,4 +47,30 @@ export async function signin(input: { email: string; password: string }) {
 
   const access = jwt.sign({ sub: user.id }, process.env.JWT_SECRET!, { expiresIn: "15m" });
   return { ok: true, user: toPublicUser(user), access } as const;
+}
+// Fetch user details by user ID
+export async function getUser(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    return { ok: false, status: 404, error: "User not found" } as const;
+  }
+  return { ok: true, user: toPublicUser(user) } as const;
+}
+
+export async function verifyCaptcha(token: string) {
+  try {
+    const resp = await fetch(
+      `${CAPTCHA_VERIFY}?secret=${CAPTCHA_SEC_KEY}&response=${token}`,
+      { method: "POST" }
+    );
+    const data = await resp.json();
+
+    if (data.success) {
+      return { ok: true, msg: "Captcha verified successfully" } as const;
+    } else {
+      return { ok: false, status: 400, error: "Not a Human, error verifying Captcha" } as const;
+    }
+  } catch (err) {
+    return { ok: false, status: 500, error: "Some error occurred verifying captcha" } as const;
+  }
 }
