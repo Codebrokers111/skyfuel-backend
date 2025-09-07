@@ -77,6 +77,9 @@ npm start
 | POST   | /v1/auth/signin        | User login                 |
 | GET    | /v1/auth/getuser       | Getting User Details       |
 | POST   | /v1/auth/verifycaptcha | Verifying Captcha          |
+| POST   | /v1/auth/existuser     | check user already exist   |
+| POST   | /v1/auth/glogin        | for Google Login           |
+| POST   | /v1/mail/sendmail      | Send OTP on singnup        |
 | ...    | ...                    | More endpoints coming soon |
 
 ## Project Structure
