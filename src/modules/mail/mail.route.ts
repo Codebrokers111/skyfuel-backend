@@ -3,6 +3,9 @@ import type { Request, Response } from "express";
 import nodemailer from "nodemailer";
 import { v4 as uuidv4 } from "uuid";
 import NodeCache from "node-cache";
+import crypto from "crypto";
+import { redisClient } from "../../db/redis.js";
+import { sha256Hex } from "../auth/auth.service.js";
 const mail_host = process.env.MAIL_HOST;
 const mail_user = process.env.MAIL_CM_USER;
 const mail_pass = process.env.MAIL_CM_PASS;
@@ -21,15 +24,22 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function generateOTP(): Promise<string> {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  return otp;
+  const otp = crypto.randomInt(100000, 1000000);
+  return otp.toString();
 }
 
 export async function storeOTP(userId: string, otp: string): Promise<boolean> {
   const key = String(userId);
   const value = String(otp);
-  // node-cache.set returns boolean
-  return otpCache.set(key, value);
+  const ttlSeconds = 5 * 60; // 5 minutes
+  const otpKey = `otp:${key}`;
+  try {
+    await redisClient.set(otpKey, value, { EX: ttlSeconds });
+    return true;
+  } catch (err) {
+    console.error("Error storing OTP:", err);
+    return false;
+  }
 }
 
 export async function generateUserId(): Promise<string> {
@@ -74,13 +84,17 @@ mailRouter.post("/sendmail", async (req: Request, res: Response) => {
     name?: string;
     page?: string;
   };
-
   // Generate temporary user ID and OTP
   const userId = await generateUserId();
   const otp = await generateOTP();
 
   // Store OTP in cache (for later verification)
-  await storeOTP(userId, otp);
+  const saveOtp = await storeOTP(userId, otp);
+  if (!saveOtp) {
+    return res
+      .status(500)
+      .json({ success: false, msg: "Failed to send OTP", uid: null });
+  }
 
   // ========================= Build mail options =============================================
   //   HTML email template with inline CSS for to show email in the user email account
@@ -202,20 +216,54 @@ mailRouter.post("/verifyotp", async (req: Request, res: Response) => {
       .status(400)
       .json({ success: false, message: "userId and otp are required" });
   }
+  const otpKey = `otp:${String(userId)}`;
 
-  const storedOtp = getStoredOTP(userId);
+  try {
+    const storedOtp = await redisClient.get(otpKey);
 
-  if (!storedOtp) {
+    if (storedOtp === null) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP expired or invalid user ID" });
+    }
+
+    // Strict string comparison
+    if (storedOtp !== String(otp)) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    // Create single-use reset token (plaintext returned once) usepfull in case of forget password
+    // Token is sha256 hashed and stored in redis with TTL
+    const tokenPlain = crypto.randomBytes(32).toString("hex"); // 64 hex chars
+    const tokenHash = sha256Hex(tokenPlain);
+    const resetKey = `reset:${tokenHash}`;
+    const resetTtlSeconds = 10 * 60; // 10 minutes
+
+    // store mapping reset:<tokenHash> -> userId with TTL
+    const setRes = await redisClient.set(resetKey, String(userId), {
+      EX: resetTtlSeconds,
+    });
+
+    if (setRes !== "OK") {
+      // Unexpected — fail-safe
+      console.error("Failed to store reset token in Redis:", setRes);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
+    }
+
+    // Delete OTP to enforce single-use
+    await redisClient.del(otpKey);
+
+    return res.json({
+      success: true,
+      message: "OTP verified successfully",
+      resetToken: tokenPlain, // single-time plaintext token for client
+    });
+  } catch (err) {
+    console.error("Error in verifyOtpHandler:", err);
     return res
-      .status(400)
-      .json({ success: false, message: "OTP expired or invalid user ID" });
-  }
-
-  if (storedOtp === String(otp)) {
-    // Optionally delete the OTP after successful verification:
-    otpCache.del(String(userId));
-    return res.json({ success: true, message: "OTP verified successfully" });
-  } else {
-    return res.status(400).json({ success: false, message: "Invalid OTP" });
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 });
