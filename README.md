@@ -54,6 +54,11 @@ To generate Prisma types after schema changes:
 npx prisma generate
 ```
 
+### Running Prisma Studio
+```bash
+npx prisma syudio
+```
+
 ### Running the Server
 
 For development (auto-reload):
@@ -88,4 +93,5 @@ npm start
 - [`src/server.ts`](src/server.ts): HTTP server entrypoint
 - [`src/db/prisma.ts`](src/db/prisma.ts): Prisma client instance
 - [`src/modules/auth/`](src/modules/auth/): Auth routes, service, validation
+- [`src/modules/mail/`](src/modules/mail/): sending mail, verifying OTP
 - [`prisma/schema.prisma`](prisma/schema.prisma): Database schema

@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 const CAPTCHA_SEC_KEY = process.env.C_SECRET_KEY;
 const CAPTCHA_VERIFY = process.env.C_VERIFY;
 
@@ -16,6 +17,11 @@ export type PublicUser = {
 function toPublicUser(u: any): PublicUser {
   const { id, email, name, emailVerifiedAt, createdAt, updatedAt } = u;
   return { id, email, name, emailVerifiedAt, createdAt, updatedAt };
+}
+
+// Helper to hash input using SHA-256 and return hex string
+export function sha256Hex(input: string): string {
+  return crypto.createHash("sha256").update(input).digest("hex");
 }
 
 export async function signup(input: {
@@ -160,4 +166,18 @@ export async function existUser(input: { email: string }) {
       msg: "Internal server error",
     } as const;
   }
+}
+
+// Update user password
+export async function updatePassword(userId: string, newPassword: string) {
+  // hash the new password
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  // update user in prisma
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash, passwordChangedAt: new Date() },
+  });
+
+  return { ok: true, user: toPublicUser(updated) } as const;
 }
